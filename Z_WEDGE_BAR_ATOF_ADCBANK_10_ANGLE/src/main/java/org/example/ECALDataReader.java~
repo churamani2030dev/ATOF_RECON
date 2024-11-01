@@ -1,0 +1,61 @@
+package org.example;
+
+import org.jlab.jnp.hipo4.data.Bank;
+import org.jlab.jnp.hipo4.data.Event;
+import org.jlab.jnp.hipo4.data.Schema;
+import org.jlab.jnp.hipo4.io.HipoReader;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class ECALDataReader {
+
+    public static void main(String[] args) {
+        if (args.length < 1) {
+            System.out.println("Please provide the path to the HIPO file as an argument.");
+            return;
+        }
+
+        String hipoFilePath = args[0];
+        HipoReader reader = new HipoReader();
+        reader.open(hipoFilePath);
+
+        Schema adcSchema = reader.getSchemaFactory().getSchema("RAW::adc");
+        Schema tdcSchema = reader.getSchemaFactory().getSchema("RAW::tdc");
+
+        Bank adcBank = new Bank(adcSchema);
+        Bank tdcBank = new Bank(tdcSchema);
+        Event event = new Event();
+
+        List<Integer> adcValues = new ArrayList<>();
+        List<Integer> tdcValues = new ArrayList<>();
+
+        while (reader.hasNext()) {
+            reader.nextEvent(event);
+
+            if (event.hasBank(adcSchema.getName())) {
+                event.read(adcBank);
+                int rows = adcBank.getRows();
+                for (int i = 0; i < rows; i++) {
+                    int adc = adcBank.getInt("ADC", i);
+                    adcValues.add(adc);
+                }
+            }
+
+            if (event.hasBank(tdcSchema.getName())) {
+                event.read(tdcBank);
+                int rows = tdcBank.getRows();
+                for (int i = 0; i < rows; i++) {
+                    int tdc = tdcBank.getInt("TDC", i);
+                    tdcValues.add(tdc);
+                }
+            }
+        }
+
+        System.out.println("Total ADC values: " + adcValues.size());
+        System.out.println("Total TDC values: " + tdcValues.size());
+
+        Plotter.plotHistogram(adcValues, "ADC Values", "ADC", "Counts");
+        Plotter.plotHistogram(tdcValues, "TDC Values", "TDC", "Counts");
+    }
+}
